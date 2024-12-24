@@ -151,7 +151,7 @@ class AddJobDialog(QDialog):
         self.setLayout(form_layout)
 
     def browse_resume(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Select Resume File", "", "PDF Files (*.pdf);;Word Files (*.docx);;All Files (*)")
+        file_path, _ = QFileDialog.getOpenFileName(self, "Select Resume File", "", "Word Files (*.docx);;PDF Files (*.pdf);;All Files (*)")
         if file_path:
             self.resume_path = file_path
             self.browse_resume_button.setText(f"Resume/CV: {os.path.basename(file_path)}")
@@ -163,7 +163,7 @@ class AddJobDialog(QDialog):
             self.browse_snapshot_button.setText(f"Snapshot: {os.path.basename(file_path)}")
 
     def browse_cover_letter(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Select Cover Letter File", "", "PDF Files (*.pdf);;Word Files (*.docx);;All Files (*)")
+        file_path, _ = QFileDialog.getOpenFileName(self, "Select Cover Letter File", "", "Word Files (*.docx);;PDF Files (*.pdf);;All Files (*)")
         if file_path:
             self.cover_letter_path = file_path
             self.browse_cover_letter_button.setText(f"Cover Letter: {os.path.basename(file_path)}")
@@ -359,8 +359,10 @@ class JobManagerGUI(QMainWindow):
         self.table.cellDoubleClicked.connect(self.edit_status)
         self.table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self.open_context_menu)
+        self.table.cellClicked.connect(self.cell_clicked)  # Connect cellClicked signal
 
         add_button = QPushButton("Add Job")
+        add_button.setStyleSheet("background-color: green; color: white;")
         add_button.clicked.connect(self.open_add_job_dialog)
 
         refresh_button = QPushButton("Refresh")
