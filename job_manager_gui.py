@@ -8,7 +8,7 @@ import webbrowser
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QTableWidget, QTableWidgetItem, QVBoxLayout, 
     QPushButton, QWidget, QDialog, QFormLayout, QLineEdit, QComboBox, 
-    QFileDialog, QMessageBox, QHBoxLayout, QCheckBox
+    QFileDialog, QMessageBox, QHBoxLayout, QCheckBox, QMenu  
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
@@ -18,11 +18,11 @@ JOBS_FOLDER = 'job_positions'
 APPLICATION_STATUSES = ["Not started", "Applied", "Interview", "Rejection", "Offer"]
 
 STATUS_COLORS = {
-    "not started": QColor(255, 255, 255),  # White
-    "applied": QColor(173, 216, 230),      # Light Blue
-    "interview": QColor(255, 255, 0),      # Yellow
-    "rejection": QColor(255, 0, 0),        # Red
-    "offer": QColor(0, 255, 0)             # Green
+    "Not started": QColor(255, 255, 255),  # White
+    "Applied": QColor(173, 216, 230),      # Light Blue
+    "Interview": QColor(255, 255, 0),      # Yellow
+    "Rejection": QColor(255, 0, 0),        # Red
+    "Offer": QColor(0, 255, 0)             # Green
 }
 
 def initialize_csv():
@@ -33,9 +33,13 @@ def initialize_csv():
                 "Position", 
                 "Company", 
                 "ID", 
-                "Link to Snapshot",
+                "Snapshot",
                 "Status",
-                "Date Applied"
+                "Resume/CV",
+                "Cover Letter",
+                "Last Updated",
+                "Candidate Home Link",
+                "Submitted"  
             ])
 
 def load_jobs():
@@ -56,25 +60,26 @@ def save_jobs(jobs):
             "Position", 
             "Company", 
             "ID", 
-            "Link to Snapshot", 
+            "Snapshot", 
             "Status", 
-            "Resume", 
+            "Resume/CV", 
             "Cover Letter", 
-            "Date Last Updated",
-            "Candidate Home Link"
+            "Last Updated",
+            "Candidate Home Link",
+            "Submitted"  
         ])
         for job in jobs:
             writer.writerow([
                 job["Position"],
                 job["Company"],
                 job["ID"],
-                job["Link to Snapshot"],
+                job["Snapshot"],
                 job["Status"],
-                job["Resume"],
+                job["Resume/CV"],
                 job["Cover Letter"],
-                job["Date Last Updated"],
-                job.get("Candidate Home Link", "")
-            ])
+                job["Last Updated"],
+                job.get("Candidate Home Link", ""),
+                job.get("Submitted", "")])  
 
 def create_job_directory(position_name, company_name, job_id):
     if not os.path.exists(JOBS_FOLDER):
@@ -121,22 +126,25 @@ class AddJobDialog(QDialog):
         form_layout.addRow("Company:", self.company_name)
         form_layout.addRow("Candidate Home Link:", self.candidate_home_link)
         form_layout.addRow("Job ID:", self.job_id)
-        form_layout.addRow("Link to Snapshot:", self.link_to_snapshot)
-        form_layout.addRow("Status:", self.status)
 
-        self.browse_resume_button = QPushButton("Browse Resume")
-        self.browse_resume_button.clicked.connect(self.browse_resume)
-        form_layout.addRow(self.browse_resume_button)
-
+        
+        form_layout.addRow("Snapshot:", self.link_to_snapshot)
         self.browse_snapshot_button = QPushButton("Browse Snapshot")
         self.browse_snapshot_button.clicked.connect(self.browse_snapshot)
         form_layout.addRow(self.browse_snapshot_button)
 
-        self.browse_cover_letter_button = QPushButton("Browse Cover Letter")
+        self.browse_resume_button = QPushButton("Browse")
+        self.browse_resume_button.clicked.connect(self.browse_resume)
+        form_layout.addRow("Resume/CV:", self.browse_resume_button)  # Add label before button
+
+        self.browse_cover_letter_button = QPushButton("Browse")
         self.browse_cover_letter_button.clicked.connect(self.browse_cover_letter)
-        form_layout.addRow(self.browse_cover_letter_button)
+        form_layout.addRow("Cover Letter:",self.browse_cover_letter_button)
+
+        form_layout.addRow("Status:", self.status)
 
         submit_button = QPushButton("Add Job")
+        submit_button.setStyleSheet("background-color: green; color: white;")
         submit_button.clicked.connect(self.add_job)
         form_layout.addRow(submit_button)
 
@@ -146,7 +154,7 @@ class AddJobDialog(QDialog):
         file_path, _ = QFileDialog.getOpenFileName(self, "Select Resume File", "", "PDF Files (*.pdf);;Word Files (*.docx);;All Files (*)")
         if file_path:
             self.resume_path = file_path
-            self.browse_resume_button.setText(f"Resume: {os.path.basename(file_path)}")
+            self.browse_resume_button.setText(f"Resume/CV: {os.path.basename(file_path)}")
 
     def browse_snapshot(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Select Snapshot File", "", "PDF Files (*.pdf);;All Files (*)")
@@ -166,7 +174,7 @@ class AddJobDialog(QDialog):
         candidate_home_link = self.candidate_home_link.text().strip()
         job_id = self.job_id.text().strip()
         link_to_snapshot = self.link_to_snapshot.text().strip()
-        status = self.status.currentText().strip().lower()
+        status = self.status.currentText()
         resume_path = self.resume_path.strip()
         cover_letter_path = self.cover_letter_path.strip()
 
@@ -184,11 +192,11 @@ class AddJobDialog(QDialog):
             "Company": company_name,
             "Candidate Home Link": candidate_home_link,
             "ID": job_id,
-            "Link to Snapshot": link_to_snapshot,
+            "Snapshot": link_to_snapshot,
             "Status": status,
-            "Resume": os.path.basename(resume_path),
+            "Resume/CV": os.path.basename(resume_path),
             "Cover Letter": cover_letter_path,
-            "Date Last Updated": date_last_updated
+            "Last Updated": date_last_updated
         }
 
         jobs = load_jobs()
@@ -199,7 +207,7 @@ class AddJobDialog(QDialog):
             try:
                 new_resume_path = os.path.join(job_dir, os.path.basename(resume_path))
                 shutil.copy2(resume_path, new_resume_path)
-                new_job["Resume"] = new_resume_path
+                new_job["Resume/CV"] = new_resume_path
             except Exception as e:
                 QMessageBox.critical(self, "Error Copying Resume", str(e))
 
@@ -208,7 +216,7 @@ class AddJobDialog(QDialog):
             try:
                 new_snapshot_path = os.path.join(job_dir, os.path.basename(link_to_snapshot))
                 shutil.move(link_to_snapshot, new_snapshot_path)
-                new_job["Link to Snapshot"] = new_snapshot_path
+                new_job["Snapshot"] = new_snapshot_path
             except Exception as e:
                 QMessageBox.critical(self, "Error Moving Snapshot", str(e))
 
@@ -237,11 +245,11 @@ class EditJobDialog(QDialog):
         self.company_name = QLineEdit(job["Company"])
         self.candidate_home_link = QLineEdit(job.get("Candidate Home Link", ""))
         self.job_id = QLineEdit(job["ID"])
-        self.link_to_snapshot = QLineEdit(job["Link to Snapshot"], readOnly=True)
+        self.link_to_snapshot = QLineEdit(job["Snapshot"], readOnly=True)
         self.status = QComboBox()
         self.status.addItems(APPLICATION_STATUSES)
         self.status.setCurrentText(job["Status"])
-        self.resume_path = job["Resume"]
+        self.resume_path = job["Resume/CV"]
         self.cover_letter_path = job["Cover Letter"]
 
         form_layout = QFormLayout()
@@ -249,10 +257,10 @@ class EditJobDialog(QDialog):
         form_layout.addRow("Company:", self.company_name)
         form_layout.addRow("Candidate Home Link:", self.candidate_home_link)
         form_layout.addRow("Job ID:", self.job_id)
-        form_layout.addRow("Link to Snapshot:", self.link_to_snapshot)
+        form_layout.addRow("Snapshot:", self.link_to_snapshot)
         form_layout.addRow("Status:", self.status)
 
-        self.browse_resume_button = QPushButton(f"Resume: {os.path.basename(self.resume_path)}" if self.resume_path else "Browse Resume")
+        self.browse_resume_button = QPushButton(f"Resume/CV: {os.path.basename(self.resume_path)}" if self.resume_path else "Browse Resume")
         self.browse_resume_button.clicked.connect(self.browse_resume)
         form_layout.addRow(self.browse_resume_button)
 
@@ -274,7 +282,7 @@ class EditJobDialog(QDialog):
         file_path, _ = QFileDialog.getOpenFileName(self, "Select Resume File", "", "PDF Files (*.pdf);;Word Files (*.docx);;All Files (*)")
         if file_path:
             self.resume_path = file_path
-            self.browse_resume_button.setText(f"Resume: {os.path.basename(file_path)}")
+            self.browse_resume_button.setText(f"Resume/CV: {os.path.basename(file_path)}")
 
     def browse_snapshot(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Select Snapshot File", "", "PDF Files (*.pdf);;All Files (*)")
@@ -294,7 +302,7 @@ class EditJobDialog(QDialog):
         new_candidate_home_link = self.candidate_home_link.text().strip()
         new_job_id = self.job_id.text().strip()
         new_link_to_snapshot = self.link_to_snapshot.text().strip()
-        new_status = self.status.currentText().strip().lower()
+        new_status = self.status.currentText()
         new_resume_path = self.resume_path.strip()
         new_cover_letter_path = self.cover_letter_path.strip()
 
@@ -309,25 +317,25 @@ class EditJobDialog(QDialog):
         new_job_dir = rename_job_directory(self.job_dir, new_position_name, new_company_name, new_job_id)
 
         # Update paths to resume and snapshot files
-        if os.path.isfile(self.job["Resume"]):
-            new_resume_path = os.path.join(new_job_dir, os.path.basename(self.job["Resume"]))
-            shutil.move(self.job["Resume"], new_resume_path)
-            self.job["Resume"] = new_resume_path
+        if os.path.isfile(self.job["Resume/CV"]):
+            new_resume_path = os.path.join(new_job_dir, os.path.basename(self.job["Resume/CV"]))
+            shutil.move(self.job["Resume/CV"], new_resume_path)
+            self.job["Resume/CV"] = new_resume_path
 
-        if os.path.isfile(self.job["Link to Snapshot"]):
-            new_snapshot_path = os.path.join(new_job_dir, os.path.basename(self.job["Link to Snapshot"]))
-            shutil.move(self.job["Link to Snapshot"], new_snapshot_path)
-            self.job["Link to Snapshot"] = new_snapshot_path
+        if os.path.isfile(self.job["Snapshot"]):
+            new_snapshot_path = os.path.join(new_job_dir, os.path.basename(self.job["Snapshot"]))
+            shutil.move(self.job["Snapshot"], new_snapshot_path)
+            self.job["Snapshot"] = new_snapshot_path
 
         self.job["Position"] = new_position_name
         self.job["Company"] = new_company_name
         self.job["Candidate Home Link"] = new_candidate_home_link
         self.job["ID"] = new_job_id
-        self.job["Link to Snapshot"] = new_link_to_snapshot
+        self.job["Snapshot"] = new_link_to_snapshot
         self.job["Status"] = new_status
-        self.job["Resume"] = new_resume_path
+        self.job["Resume/CV"] = new_resume_path
         self.job["Cover Letter"] = new_cover_letter_path
-        self.job["Date Last Updated"] = datetime.date.today().strftime("%Y-%m-%d")
+        self.job["Last Updated"] = datetime.date.today().strftime("%Y-%m-%d")
 
         jobs = load_jobs()
         jobs[self.row] = self.job
@@ -339,18 +347,18 @@ class JobManagerGUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("NextStep")
-        self.setGeometry(100, 100, 900, 400)
+        self.setGeometry(100, 100, 1000, 400)
 
         self.table = QTableWidget()
         self.table.setColumnCount(9)
         self.table.setHorizontalHeaderLabels([
-            "Position", "Company", "ID", "Link to Snapshot", 
-            "Status", "Resume", "Cover Letter", "Date Last Updated", "Actions"
+            "Position", "Company", "ID", "Snapshot", 
+            "Status", "Resume/CV", "Cover Letter", "Submitted", "Last Updated"
         ])
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.cellDoubleClicked.connect(self.edit_status)
-
-        self.table.cellClicked.connect(self.cell_clicked)
+        self.table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self.open_context_menu)
 
         add_button = QPushButton("Add Job")
         add_button.clicked.connect(self.open_add_job_dialog)
@@ -366,7 +374,6 @@ class JobManagerGUI(QMainWindow):
 
         button_layout = QHBoxLayout()
         button_layout.addWidget(add_button)
-        #button_layout.addWidget(refresh_button)
         button_layout.addWidget(exit_button)
 
         main_layout = QVBoxLayout()
@@ -381,24 +388,42 @@ class JobManagerGUI(QMainWindow):
         initialize_csv()
         self.populate_jobs()
 
+    def open_context_menu(self, position):
+        menu = QMenu()
+        edit_action = menu.addAction("Edit")
+        delete_action = menu.addAction("Delete")
+        duplicate_action = menu.addAction("Duplicate")
+        open_directory_action = menu.addAction("Open Directory")
+
+        action = menu.exec_(self.table.viewport().mapToGlobal(position))
+        if action == edit_action:
+            self.open_edit_job_dialog(self.table.currentRow())
+        elif action == delete_action:
+            self.delete_job(self.table.currentRow())
+        elif action == duplicate_action:
+            self.duplicate_job(self.table.currentRow())
+        elif action == open_directory_action:
+            self.open_job_directory(self.table.currentRow())
+
     def populate_jobs(self):
         jobs = load_jobs()
         if self.hide_rejected_checkbox.isChecked():
-            jobs = [job for job in jobs if job["Status"] != "rejection"]
+            jobs = [job for job in jobs if job["Status"] != "Rejection"]
         self.table.setRowCount(len(jobs))
         for row, job in enumerate(jobs):
             self.table.setItem(row, 0, QTableWidgetItem(job["Position"]))
             company_item = QTableWidgetItem(job["Company"])
-            company_item.setForeground(Qt.blue)
-            company_item.setFlags(company_item.flags() | Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-            company_item.setData(Qt.UserRole, job.get("Candidate Home Link", ""))
+            link = job.get("Candidate Home Link", "")
+            if link:
+                company_item.setForeground(Qt.blue)
+                company_item.setFlags(company_item.flags() | Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+                company_item.setData(Qt.UserRole, link)
             self.table.setItem(row, 1, company_item)
-            #self.table.setItem(row, 1, QTableWidgetItem(job["Company"]))
             self.table.setItem(row, 2, QTableWidgetItem(job["ID"]))
             
             snapshot_button = QPushButton("Open")
-            snapshot_button.clicked.connect(lambda _, path=job["Link to Snapshot"]: self.open_file(path))
-            if not job["Link to Snapshot"]:
+            snapshot_button.clicked.connect(lambda _, path=job["Snapshot"]: self.open_file(path))
+            if not job["Snapshot"]:
                 snapshot_button.setDisabled(True)
             self.table.setCellWidget(row, 3, snapshot_button)
             
@@ -407,8 +432,8 @@ class JobManagerGUI(QMainWindow):
             self.table.setItem(row, 4, status_item)
             
             resume_button = QPushButton("Open")
-            resume_button.clicked.connect(lambda _, path=job["Resume"]: self.open_file(path))
-            if not job["Resume"]:
+            resume_button.clicked.connect(lambda _, path=job["Resume/CV"]: self.open_file(path))
+            if not job["Resume/CV"]:
                 resume_button.setDisabled(True)
             self.table.setCellWidget(row, 5, resume_button)
             
@@ -418,21 +443,8 @@ class JobManagerGUI(QMainWindow):
                 cover_letter_button.setDisabled(True)
             self.table.setCellWidget(row, 6, cover_letter_button)
 
-            self.table.setItem(row, 7, QTableWidgetItem(job["Date Last Updated"]))
-
-            actions_layout = QHBoxLayout()
-            edit_button = QPushButton("Edit")
-            edit_button.clicked.connect(lambda _, r=row: self.open_edit_job_dialog(r))
-            delete_button = QPushButton("Delete")
-            delete_button.clicked.connect(lambda _, r=row: self.delete_job(r))
-            duplicate_button = QPushButton("Duplicate")
-            duplicate_button.clicked.connect(lambda _, r=row: self.duplicate_job(r))
-            actions_layout.addWidget(edit_button)
-            actions_layout.addWidget(delete_button)
-            #actions_layout.addWidget(duplicate_button)
-            actions_widget = QWidget()
-            actions_widget.setLayout(actions_layout)
-            self.table.setCellWidget(row, 8, actions_widget)
+            self.table.setItem(row, 7, QTableWidgetItem(job["Last Updated"]))
+            self.table.setItem(row, 8, QTableWidgetItem(job.get("Submitted", "")))  # Add Submitted column
 
         self.table.resizeColumnsToContents()  # Automatically adjust column widths
         self.table.resizeRowsToContents()     # Automatically adjust row heights
@@ -486,23 +498,33 @@ class JobManagerGUI(QMainWindow):
 
         new_job = job.copy()
         new_job["ID"] = f"{job['ID']}_copy"
-        new_job["Date Last Updated"] = datetime.date.today().strftime("%Y-%m-%d")
+        new_job["Last Updated"] = datetime.date.today().strftime("%Y-%m-%d")
+        new_job["Submitted"] = ""  # Reset Submitted date
 
         new_job_dir = create_job_directory(new_job["Position"], new_job["Company"], new_job["ID"])
 
-        if os.path.isfile(job["Resume"]):
-            new_resume_path = os.path.join(new_job_dir, os.path.basename(job["Resume"]))
-            shutil.copy2(job["Resume"], new_resume_path)
-            new_job["Resume"] = new_resume_path
+        if os.path.isfile(job["Resume/CV"]):
+            new_resume_path = os.path.join(new_job_dir, os.path.basename(job["Resume/CV"]))
+            shutil.copy2(job["Resume/CV"], new_resume_path)
+            new_job["Resume/CV"] = new_resume_path
 
-        if os.path.isfile(job["Link to Snapshot"]):
-            new_snapshot_path = os.path.join(new_job_dir, os.path.basename(job["Link to Snapshot"]))
-            shutil.copy2(job["Link to Snapshot"], new_snapshot_path)
-            new_job["Link to Snapshot"] = new_snapshot_path
+        if os.path.isfile(job["Snapshot"]):
+            new_snapshot_path = os.path.join(new_job_dir, os.path.basename(job["Snapshot"]))
+            shutil.copy2(job["Snapshot"], new_snapshot_path)
+            new_job["Snapshot"] = new_snapshot_path
 
         jobs.append(new_job)
         save_jobs(jobs)
         self.populate_jobs()
+
+    def open_job_directory(self, row):
+        jobs = load_jobs()
+        job = jobs[row]
+        job_dir = create_job_directory(job["Position"], job["Company"], job["ID"])
+        if os.path.exists(job_dir):
+            os.startfile(job_dir)
+        else:
+            QMessageBox.warning(self, "Warning", f"Directory not found: {job_dir}")
 
     def edit_status(self, row, column):
         if column == 4:  # Status column
@@ -522,6 +544,11 @@ class JobManagerGUI(QMainWindow):
         jobs = load_jobs()
         job = jobs[row]
         job["Status"] = new_status
+
+        if new_status == "Applied":
+            job["Submitted"] = datetime.date.today().strftime("%Y-%m-%d")
+            self.table.setItem(row, 8, QTableWidgetItem(job["Submitted"]))  # Update Submitted column
+
         save_jobs(jobs)
 
     def cell_clicked(self, row, column):
