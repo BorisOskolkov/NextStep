@@ -10,6 +10,8 @@
 *.userosscache
 *.sln.docstates
 jobs.csv
+# User-specific directories
+job_positions/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
