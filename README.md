@@ -42,8 +42,8 @@ NextStep Job Manager is a desktop application designed to help you manage your j
 
 ## Screenshots
 
-![Main Interface](screenshots/main_interface.png)
-![Add Job Dialog](screenshots/add_job_dialog.png)
+![Main Interface](Screenshots/main_interface.png)
+![Add Job Dialog](Screenshots/add_job_dialog.png)
 
 ## Contributing
 
