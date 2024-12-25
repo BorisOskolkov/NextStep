@@ -102,7 +102,6 @@ def rename_job_directory(old_path, new_position_name, new_company_name, new_job_
     safe_job_id        = new_job_id.replace(" ", "_")
     new_dirname = f"{safe_position_name}-{safe_company_name}-{safe_job_id}"
     new_path = os.path.join(JOBS_FOLDER, new_dirname)
-    os.rename(old_path, new_path)
     return new_path
 
 class AddJobDialog(QDialog):
@@ -303,8 +302,8 @@ class EditJobDialog(QDialog):
         new_job_id = self.job_id.text().strip()
         new_link_to_snapshot = self.link_to_snapshot.text().strip()
         new_status = self.status.currentText()
-        new_resume_path = self.resume_path.strip()
-        new_cover_letter_path = self.cover_letter_path.strip()
+        new_resume_path = self.resume_path
+        new_cover_letter_path = self.cover_letter_path
 
         if not new_position_name or not new_company_name or not new_job_id:
             QMessageBox.warning(self, "Warning", "Position, Company, and ID are required.")
@@ -313,20 +312,40 @@ class EditJobDialog(QDialog):
         if new_status not in APPLICATION_STATUSES:
             QMessageBox.warning(self, "Warning", "Invalid application status.")
             return
+        
+        old_path = self.job_dir
+        new_path = rename_job_directory(self.job_dir, new_position_name, new_company_name, new_job_id)
+        print(f"New Job Directory: {new_path}")
+        # Update paths to resume and snapshot files before renaming the directory
+        resume_path = self.job["Resume/CV"]
+        snapshot_path = self.job["Snapshot"]
+        cover_letter_path = self.job["Cover Letter"]
 
-        new_job_dir = rename_job_directory(self.job_dir, new_position_name, new_company_name, new_job_id)
-
-        # Update paths to resume and snapshot files
-        if os.path.isfile(self.job["Resume/CV"]):
-            new_resume_path = os.path.join(new_job_dir, os.path.basename(self.job["Resume/CV"]))
-            shutil.move(self.job["Resume/CV"], new_resume_path)
+        print(f"Checking if resume file exists: {resume_path}")
+        if os.path.isfile(resume_path):
+            new_resume_path = os.path.join(new_path, os.path.basename(resume_path))
             self.job["Resume/CV"] = new_resume_path
+        else:
+            print(f"Resume file not found: {resume_path}")
 
-        if os.path.isfile(self.job["Snapshot"]):
-            new_snapshot_path = os.path.join(new_job_dir, os.path.basename(self.job["Snapshot"]))
-            shutil.move(self.job["Snapshot"], new_snapshot_path)
+        print(f"Checking if snapshot file exists: {snapshot_path}")
+        if os.path.isfile(snapshot_path):
+            new_snapshot_path = os.path.join(new_path, os.path.basename(snapshot_path))
             self.job["Snapshot"] = new_snapshot_path
+        else:
+            print(f"Snapshot file not found: {snapshot_path}")
 
+        print(f"Checking if cover letter file exists: {cover_letter_path}")
+        if os.path.isfile(cover_letter_path):
+            new_cover_letter_path = os.path.join(new_path, os.path.basename(cover_letter_path))
+            self.job["Cover Letter"] = new_cover_letter_path
+        else:
+            print(f"Cover letter file not found: {cover_letter_path}")
+
+        # Rename the directory after moving the files
+        
+        
+        os.rename(old_path, new_path)
         self.job["Position"] = new_position_name
         self.job["Company"] = new_company_name
         self.job["Candidate Home Link"] = new_candidate_home_link
@@ -341,7 +360,7 @@ class EditJobDialog(QDialog):
         jobs[self.row] = self.job
         save_jobs(jobs)
         self.parent().populate_jobs()
-        self.accept()       
+        self.accept()
 
 class JobManagerGUI(QMainWindow):
     def __init__(self):
@@ -510,6 +529,11 @@ class JobManagerGUI(QMainWindow):
             shutil.copy2(job["Resume/CV"], new_resume_path)
             new_job["Resume/CV"] = new_resume_path
 
+        if os.path.isfile(job["Cover Letter"]):
+            new_cover_letter_path = os.path.join(new_job_dir, os.path.basename(job["Cover Letter"]))
+            shutil.copy2(job["Cover Letter"], new_cover_letter_path)
+            new_job["Cover Letter"] = new_cover_letter_path
+
         if os.path.isfile(job["Snapshot"]):
             new_snapshot_path = os.path.join(new_job_dir, os.path.basename(job["Snapshot"]))
             shutil.copy2(job["Snapshot"], new_snapshot_path)
@@ -549,7 +573,11 @@ class JobManagerGUI(QMainWindow):
 
         if new_status == "Applied":
             job["Submitted"] = datetime.date.today().strftime("%Y-%m-%d")
-            self.table.setItem(row, 8, QTableWidgetItem(job["Submitted"]))  # Update Submitted column
+            self.table.setItem(row, 7, QTableWidgetItem(job["Submitted"]))  # Update Submitted column
+        
+        # Update Last Updated field
+        job["Last Updated"] = datetime.date.today().strftime("%Y-%m-%d")
+        self.table.setItem(row, 8, QTableWidgetItem(job["Last Updated"]))  # Update Last Updated column
 
         save_jobs(jobs)
 
